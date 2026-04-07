@@ -2,6 +2,41 @@ import TelegramBot from "node-telegram-bot-api";
 import OpenAI from "openai";
 import { logger } from "./lib/logger";
 
+const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+const BTC_ADDRESS_REGEX = /^(1|3|bc1)[a-zA-Z0-9]{25,61}$/;
+
+async function getEthBalance(address: string): Promise<{ eth: string; usdApprox: string } | null> {
+  try {
+    const res = await fetch(`https://api.blockcypher.com/v1/eth/main/addrs/${address}/balance`);
+    const data = await res.json() as { balance?: number; error?: string };
+    if (data.error || data.balance === undefined) return null;
+    const eth = (data.balance / 1e18).toFixed(6);
+    const priceRes = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
+    const priceData = await priceRes.json() as { ethereum?: { usd?: number } };
+    const usdPrice = priceData?.ethereum?.usd ?? 0;
+    const usd = (parseFloat(eth) * usdPrice).toFixed(2);
+    return { eth, usdApprox: usd };
+  } catch {
+    return null;
+  }
+}
+
+async function getBtcBalance(address: string): Promise<{ btc: string; usdApprox: string } | null> {
+  try {
+    const res = await fetch(`https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance`);
+    const data = await res.json() as { balance?: number; error?: string };
+    if (data.error || data.balance === undefined) return null;
+    const btc = (data.balance / 1e8).toFixed(8);
+    const priceRes = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+    const priceData = await priceRes.json() as { bitcoin?: { usd?: number } };
+    const usdPrice = priceData?.bitcoin?.usd ?? 0;
+    const usd = (parseFloat(btc) * usdPrice).toFixed(2);
+    return { btc, usdApprox: usd };
+  } catch {
+    return null;
+  }
+}
+
 const SYSTEM_PROMPT = `You are a professional senior support specialist at a major cryptocurrency and blockchain platform. Your role is to respond to users who are experiencing issues with crypto, DeFi, memecoins, wallets, claims, migrations, staking, swaps, and all blockchain-related problems.
 
 Your responses must be:
@@ -87,9 +122,67 @@ What issue are you experiencing today?`;
   bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
     await bot!.sendMessage(chatId,
-      `ℹ️ *How to use this bot:*\n\nJust type your crypto issue in plain language. For example:\n\n• "My tokens didn't arrive after the swap"\n• "I can't claim my airdrop"\n• "My wallet shows wrong balance"\n• "Transaction stuck for 2 hours"\n• "I need to migrate my V1 tokens"\n\nI will give you a full detailed step-by-step guide to resolve your issue.`,
+      `ℹ️ *How to use this bot:*\n\nJust type your crypto issue in plain language. For example:\n\n• "My tokens didn't arrive after the swap"\n• "I can't claim my airdrop"\n• "My wallet shows wrong balance"\n• "Transaction stuck for 2 hours"\n• "I need to migrate my V1 tokens"\n\nOr use commands:\n• /wallet \\<address\\> — Check ETH or BTC wallet balance\n\nI will give you a full detailed step-by-step guide to resolve your issue.`,
       { parse_mode: "Markdown" }
     );
+  });
+
+  bot.onText(/\/wallet(?:\s+(.+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const address = match?.[1]?.trim();
+
+    if (!address) {
+      await bot!.sendMessage(chatId,
+        `📋 *Wallet Balance Lookup*\n\nUsage:\n\`/wallet <address>\`\n\nSupported:\n• Ethereum (0x...)\n• Bitcoin (1..., 3..., bc1...)\n\nExample:\n\`/wallet 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe\``,
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
+
+    await bot!.sendChatAction(chatId, "typing");
+
+    if (ETH_ADDRESS_REGEX.test(address)) {
+      const result = await getEthBalance(address);
+      if (!result) {
+        await bot!.sendMessage(chatId,
+          `⚠️ Could not fetch balance for that address. The address may be invalid or the network may be temporarily unavailable. Please try again shortly.`
+        );
+        return;
+      }
+      await bot!.sendMessage(chatId,
+        `🔍 *ETH Wallet Balance*\n\n` +
+        `📬 *Address:*\n\`${address}\`\n\n` +
+        `💰 *Balance:* ${result.eth} ETH\n` +
+        `💵 *Est. Value:* $${result.usdApprox} USD\n\n` +
+        `🔗 View on Etherscan:\nhttps://etherscan.io/address/${address}`,
+        { parse_mode: "Markdown" }
+      );
+      logger.info({ chatId, address }, "ETH wallet lookup performed");
+
+    } else if (BTC_ADDRESS_REGEX.test(address)) {
+      const result = await getBtcBalance(address);
+      if (!result) {
+        await bot!.sendMessage(chatId,
+          `⚠️ Could not fetch balance for that address. The address may be invalid or the network may be temporarily unavailable. Please try again shortly.`
+        );
+        return;
+      }
+      await bot!.sendMessage(chatId,
+        `🔍 *BTC Wallet Balance*\n\n` +
+        `📬 *Address:*\n\`${address}\`\n\n` +
+        `💰 *Balance:* ${result.btc} BTC\n` +
+        `💵 *Est. Value:* $${result.usdApprox} USD\n\n` +
+        `🔗 View on Blockchain.com:\nhttps://www.blockchain.com/explorer/addresses/btc/${address}`,
+        { parse_mode: "Markdown" }
+      );
+      logger.info({ chatId, address }, "BTC wallet lookup performed");
+
+    } else {
+      await bot!.sendMessage(chatId,
+        `❌ *Invalid address format*\n\nPlease provide a valid:\n• Ethereum address (starts with \`0x\`, 42 characters)\n• Bitcoin address (starts with \`1\`, \`3\`, or \`bc1\`)\n\nExample: \`/wallet 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe\``,
+        { parse_mode: "Markdown" }
+      );
+    }
   });
 
   bot.on("message", async (msg) => {
