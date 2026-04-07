@@ -203,7 +203,7 @@ What issue are you experiencing today?`;
       await bot!.sendChatAction(chatId, "typing");
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: "gpt-5-nano",
         max_completion_tokens: 8192,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
