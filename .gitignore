@@ -1,0 +1,24 @@
+# Dependencies
+  node_modules/
+  .pnpm-store/
+
+  # Build output
+  dist/
+  *.mjs.map
+
+  # Environment
+  .env
+  .env.local
+  .env.*
+
+  # TypeScript
+  *.tsbuildinfo
+
+  # Replit
+  .local/
+  .replit
+  .replit-artifact/
+
+  # Logs
+  *.log
+  
