@@ -1,20 +1,13 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { startBot } from "./bot";
+import { startBot, registerWebhook } from "./bot";
 
 const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error("PORT environment variable is required but was not provided.");
-}
-
+if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
 const port = Number(rawPort);
+if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT value: "${rawPort}"`);
 
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-app.listen(port, (err) => {
+app.listen(port, async (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -24,14 +17,16 @@ app.listen(port, (err) => {
 
   startBot();
 
-  // Keep-alive: ping own healthz every 10 minutes so Render free tier
-  // never spins down due to inactivity (spin-down threshold is 15 min).
-  const selfUrl =
+  // Register Telegram webhook so Telegram pushes updates to us (no polling = no 409 conflicts)
+  const externalUrl =
     process.env["RENDER_EXTERNAL_URL"] ??
-    "https://crypto-support-bot.onrender.com";
+    "https://crypto-support-bot-pbue.onrender.com";
+  const webhookUrl = `${externalUrl}/api/webhook`;
+  await registerWebhook(webhookUrl);
 
+  // Keep-alive: ping own healthz every 10 minutes so Render free tier never spins down
   setInterval(() => {
-    fetch(`${selfUrl}/api/healthz`)
+    fetch(`${externalUrl}/api/healthz`)
       .then(() => logger.info("keep-alive ping sent"))
       .catch((e: unknown) => logger.warn({ err: String(e) }, "keep-alive ping failed"));
   }, 10 * 60 * 1000);
