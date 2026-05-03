@@ -68,6 +68,44 @@ NEVER ask for seed phrases, private keys, or passwords.`;
 
 let bot: TelegramBot | null = null;
 
+function createOpenAIClient(): OpenAI | null {
+  // Support Groq (free), OpenAI, or any OpenAI-compatible API
+  const groqKey = process.env["GROQ_API_KEY"];
+  const openaiKey = process.env["OPENAI_API_KEY"];
+  const customBase = process.env["AI_BASE_URL"];
+  const customKey = process.env["AI_API_KEY"];
+
+  if (groqKey) {
+    logger.info("Using Groq AI backend");
+    return new OpenAI({
+      baseURL: "https://api.groq.com/openai/v1",
+      apiKey: groqKey,
+    });
+  }
+  if (openaiKey) {
+    logger.info("Using OpenAI backend");
+    return new OpenAI({ apiKey: openaiKey });
+  }
+  if (customBase && customKey) {
+    logger.info({ baseURL: customBase }, "Using custom AI backend");
+    return new OpenAI({ baseURL: customBase, apiKey: customKey });
+  }
+  // Legacy Replit AI integration support
+  const replitBase = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
+  const replitKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  if (replitBase && replitKey) {
+    logger.info("Using Replit AI integration backend");
+    return new OpenAI({ baseURL: replitBase, apiKey: replitKey });
+  }
+  return null;
+}
+
+function getModel(client: OpenAI): string {
+  if (process.env["GROQ_API_KEY"]) return "llama-3.3-70b-versatile";
+  if (process.env["AI_MODEL"]) return process.env["AI_MODEL"]!;
+  return "gpt-4o-mini";
+}
+
 export function startBot(): void {
   const token = process.env["TELEGRAM_BOT_TOKEN"];
 
@@ -76,18 +114,15 @@ export function startBot(): void {
     return;
   }
 
-  const openaiBaseUrl = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
-  const openaiApiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  const openai = createOpenAIClient();
 
-  if (!openaiBaseUrl || !openaiApiKey) {
-    logger.error("OpenAI integration env vars missing — bot cannot generate responses");
+  if (!openai) {
+    logger.error("No AI API key configured — set GROQ_API_KEY (free at console.groq.com) or OPENAI_API_KEY");
     return;
   }
 
-  const openai = new OpenAI({
-    baseURL: openaiBaseUrl,
-    apiKey: openaiApiKey,
-  });
+  const model = getModel(openai);
+  logger.info({ model }, "AI model selected");
 
   bot = new TelegramBot(token, { polling: true });
 
@@ -203,8 +238,8 @@ What issue are you experiencing today?`;
       await bot!.sendChatAction(chatId, "typing");
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-5-nano",
-        max_completion_tokens: 8192,
+        model,
+        max_tokens: 4096,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
@@ -240,7 +275,6 @@ What issue are you experiencing today?`;
           chunks.push(remaining.slice(0, cutAt));
           remaining = remaining.slice(cutAt);
         }
-
         for (let i = 0; i < chunks.length; i++) {
           if (i > 0) {
             await new Promise((r) => setTimeout(r, 500));
