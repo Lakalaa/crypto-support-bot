@@ -159,10 +159,7 @@ function createOpenAIClient(): { client: OpenAI; model: string } | null {
   const openaiKey = process.env["OPENAI_API_KEY"];
   if (openaiKey) {
     logger.info("Using OpenAI backend");
-    return {
-      client: new OpenAI({ apiKey: openaiKey }),
-      model: process.env["AI_MODEL"] ?? "gpt-4o-mini",
-    };
+    return { client: new OpenAI({ apiKey: openaiKey }), model: process.env["AI_MODEL"] ?? "gpt-4o-mini" };
   }
   const customBase = process.env["AI_BASE_URL"];
   const customKey = process.env["AI_API_KEY"];
@@ -177,12 +174,165 @@ function createOpenAIClient(): { client: OpenAI; model: string } | null {
   const replitKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
   if (replitBase && replitKey) {
     logger.info("Using Replit AI integration backend");
-    return {
-      client: new OpenAI({ baseURL: replitBase, apiKey: replitKey }),
-      model: process.env["AI_MODEL"] ?? "gpt-5-nano",
-    };
+    return { client: new OpenAI({ baseURL: replitBase, apiKey: replitKey }), model: process.env["AI_MODEL"] ?? "gpt-5-nano" };
   }
   return null;
+}
+
+async function sendLongMessage(chatId: number, text: string): Promise<void> {
+  const chunkSize = 4000;
+  if (text.length <= chunkSize) {
+    await bot!.sendMessage(chatId, text);
+    return;
+  }
+  let remaining = text;
+  while (remaining.length > 0) {
+    let cutAt = chunkSize;
+    if (remaining.length > chunkSize) {
+      const lastNewline = remaining.lastIndexOf("\n", chunkSize);
+      if (lastNewline > chunkSize * 0.5) cutAt = lastNewline + 1;
+    }
+    await bot!.sendMessage(chatId, remaining.slice(0, cutAt));
+    remaining = remaining.slice(cutAt);
+    if (remaining.length > 0) {
+      await new Promise((r) => setTimeout(r, 700));
+      await bot!.sendChatAction(chatId, "typing");
+      await new Promise((r) => setTimeout(r, 900));
+    }
+  }
+}
+
+async function handleMessage(msg: TelegramBot.Message): Promise<void> {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  if (!text) return;
+
+  const aiConfig = createOpenAIClient();
+  if (!aiConfig) {
+    logger.error("No AI API configured");
+    return;
+  }
+  const { client: openai, model } = aiConfig;
+
+  // /start command
+  if (text === "/start") {
+    const firstName = msg.from?.first_name ?? "there";
+    await bot!.sendMessage(chatId,
+      `Hello ${firstName}, and welcome.\n\nYou have reached the Official Global Crypto & Web3 Support Center.\n\nI am a senior support specialist covering all major platforms and protocols. Whether your issue is on a centralized exchange, a DeFi protocol, a wallet, a bridge, a staking platform, a DAO, an NFT marketplace, an AI platform, or any blockchain network — I am here to resolve it with you directly.\n\nI cover all platforms including:\n\n• Exchanges: Binance, Coinbase, OKX, Bybit, KuCoin, Kraken, Gate.io and more\n• DeFi: Uniswap, Curve, Aave, Lido, GMX, Hyperliquid and more\n• Wallets: MetaMask, Phantom, Ledger, Trust Wallet and more\n• Staking and DAO: EigenLayer, Lido, Snapshot, veToken governance and more\n• Bridges: Stargate, LayerZero, Wormhole, Across and more\n• NFT: OpenSea, Blur, Magic Eden, Ordinals and more\n• AI Platforms: ChatGPT, Grok, Claude, Gemini and more\n• All chains: Ethereum, Solana, BNB Chain, Arbitrum, Base and all L1/L2\n\nI respond in any language. Non-English responses include a full English translation.\n\nPlease describe your issue in as much detail as possible. The more context you give me, the faster I can resolve this for you.\n\nIMPORTANT: Never share your seed phrase, private key, or password with anyone — including support staff.`
+    );
+    return;
+  }
+
+  // /help command
+  if (text === "/help") {
+    await bot!.sendMessage(chatId,
+      `How to get support:\n\nSimply type your issue in plain language — any language. Be as specific as possible.\n\nUseful details to include:\n• Which platform or protocol the issue is on\n• What you were trying to do when it happened\n• Any transaction hash or wallet address involved\n• When the issue started\n\nCommand:\n• /wallet <address> — Live ETH or BTC balance check\n\nI will respond with a full, detailed resolution — not a generic reply.`
+    );
+    return;
+  }
+
+  // /wallet command
+  const walletMatch = text.match(/^\/wallet(?:\s+(.+))?$/);
+  if (walletMatch) {
+    const address = walletMatch[1]?.trim();
+    if (!address) {
+      await bot!.sendMessage(chatId,
+        `Wallet Balance Lookup\n\nUsage: /wallet <address>\n\nSupported:\n• Ethereum/EVM (0x...)\n• Bitcoin (1..., 3..., bc1...)\n\nExample:\n/wallet 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe`
+      );
+      return;
+    }
+    await bot!.sendChatAction(chatId, "typing");
+    if (ETH_ADDRESS_REGEX.test(address)) {
+      const result = await getEthBalance(address);
+      if (!result) {
+        await bot!.sendMessage(chatId, `The network is temporarily unable to return balance data for this address. Please try again in a few minutes.`);
+        return;
+      }
+      await bot!.sendMessage(chatId,
+        `ETH Wallet Balance\n\nAddress:\n${address}\n\nBalance: ${result.eth} ETH\nEstimated Value: $${result.usdApprox} USD\n\nFull on-chain data:\nhttps://etherscan.io/address/${address}`
+      );
+    } else if (BTC_ADDRESS_REGEX.test(address)) {
+      const result = await getBtcBalance(address);
+      if (!result) {
+        await bot!.sendMessage(chatId, `The network is temporarily unable to return balance data for this address. Please try again in a few minutes.`);
+        return;
+      }
+      await bot!.sendMessage(chatId,
+        `BTC Wallet Balance\n\nAddress:\n${address}\n\nBalance: ${result.btc} BTC\nEstimated Value: $${result.usdApprox} USD\n\nFull on-chain data:\nhttps://www.blockchain.com/explorer/addresses/btc/${address}`
+      );
+    } else {
+      await bot!.sendMessage(chatId,
+        `That does not match a recognised address format.\n\n• Ethereum/EVM: starts with 0x, 42 characters total\n• Bitcoin: starts with 1, 3, or bc1\n\nPlease double-check the address and try again.`
+      );
+    }
+    return;
+  }
+
+  // Skip other commands
+  if (text.startsWith("/")) return;
+
+  // AI support response
+  const typingInterval = setInterval(() => {
+    bot!.sendChatAction(chatId, "typing").catch(() => {});
+  }, 4000);
+
+  try {
+    await bot!.sendChatAction(chatId, "typing");
+
+    const completion = await openai.chat.completions.create({
+      model,
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: text },
+      ],
+    });
+
+    clearInterval(typingInterval);
+
+    const reply = completion.choices[0]?.message?.content;
+    if (!reply) {
+      await bot!.sendMessage(chatId, "We are currently experiencing high ticket volume. Your case is in the queue. Please try again in a moment.");
+      return;
+    }
+
+    await sendLongMessage(chatId, reply);
+    logger.info({ chatId, issueLength: text.length, model }, "Support response sent");
+  } catch (err) {
+    clearInterval(typingInterval);
+    logger.error({ err, chatId }, "Error generating support response");
+    await bot!.sendMessage(chatId,
+      "We encountered a temporary issue processing your request. Your case has been logged. Please resend your message and I will pick it up immediately."
+    );
+  }
+}
+
+export async function registerWebhook(webhookUrl: string): Promise<void> {
+  const token = process.env["TELEGRAM_BOT_TOKEN"];
+  if (!token) return;
+
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${token}/setWebhook`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          allowed_updates: ["message"],
+          drop_pending_updates: true,
+        }),
+      }
+    );
+    const data = await res.json() as { ok: boolean; description?: string };
+    if (data.ok) {
+      logger.info({ webhookUrl }, "Telegram webhook registered successfully");
+    } else {
+      logger.error({ description: data.description }, "Failed to register Telegram webhook");
+    }
+  } catch (err) {
+    logger.error({ err }, "Error registering webhook");
+  }
 }
 
 export function startBot(): void {
@@ -192,147 +342,30 @@ export function startBot(): void {
     return;
   }
 
-  const aiConfig = createOpenAIClient();
-  if (!aiConfig) {
+  if (!createOpenAIClient()) {
     logger.error("No AI API configured — set GROK_API_KEY, GROQ_API_KEY, OPENAI_API_KEY, or AI_BASE_URL+AI_API_KEY");
     return;
   }
 
-  const { client: openai, model } = aiConfig;
-  logger.info({ model }, "AI model selected");
+  // Use webhook mode — no polling, no 409 conflicts
+  bot = new TelegramBot(token, { polling: false });
+  logger.info("Telegram bot initialised in webhook mode (no polling)");
+}
 
-  bot = new TelegramBot(token, { polling: true });
-  logger.info("Telegram crypto support bot started (polling)");
-
-  bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    const firstName = msg.from?.first_name ?? "there";
-    await bot!.sendMessage(chatId,
-      `Hello ${firstName}, and welcome.\n\nYou have reached the *Official Global Crypto & Web3 Support Center*.\n\nI am a senior support specialist covering all major platforms and protocols. Whether your issue is on a centralized exchange, a DeFi protocol, a wallet, a bridge, a staking platform, a DAO, an NFT marketplace, an AI platform, or any blockchain network — I am here to resolve it with you directly.\n\nI cover all platforms including:\n\n• *Exchanges:* Binance, Coinbase, OKX, Bybit, KuCoin, Kraken, Gate.io and more\n• *DeFi:* Uniswap, Curve, Aave, Lido, GMX, Hyperliquid and more\n• *Wallets:* MetaMask, Phantom, Ledger, Trust Wallet and more\n• *Staking & DAO:* EigenLayer, Lido, Snapshot, veToken governance and more\n• *Bridges:* Stargate, LayerZero, Wormhole, Across and more\n• *NFT:* OpenSea, Blur, Magic Eden, Ordinals and more\n• *AI Platforms:* ChatGPT, Grok, Claude, Gemini and more\n• *All chains:* Ethereum, Solana, BNB Chain, Arbitrum, Base and all L1/L2\n\nI respond in *any language*. Non-English responses include a full English translation.\n\nPlease describe your issue in as much detail as possible. The more context you give me, the faster I can resolve this for you.\n\n⚠️ *Important:* Never share your seed phrase, private key, or password with anyone — including support staff.`,
-      { parse_mode: "Markdown" }
-    );
-  });
-
-  bot.onText(/\/help/, async (msg) => {
-    const chatId = msg.chat.id;
-    await bot!.sendMessage(chatId,
-      `*How to get support:*\n\nSimply type your issue in plain language — any language. Be as specific as possible.\n\nUseful details to include:\n• Which platform or protocol the issue is on\n• What you were trying to do when it happened\n• Any transaction hash or wallet address involved\n• When the issue started\n\nCommand:\n• /wallet \\<address\\> — Live ETH or BTC balance check\n\nI will respond with a full, detailed resolution — not a generic reply.`,
-      { parse_mode: "Markdown" }
-    );
-  });
-
-  bot.onText(/\/wallet(?:\s+(.+))?/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const address = match?.[1]?.trim();
-    if (!address) {
-      await bot!.sendMessage(chatId,
-        `*Wallet Balance Lookup*\n\nUsage: \`/wallet <address>\`\n\nSupported networks:\n• Ethereum and all EVM chains (address starts with 0x)\n• Bitcoin (address starts with 1, 3, or bc1)\n\nExample:\n\`/wallet 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe\``,
-        { parse_mode: "Markdown" }
-      );
-      return;
-    }
-    await bot!.sendChatAction(chatId, "typing");
-    if (ETH_ADDRESS_REGEX.test(address)) {
-      const result = await getEthBalance(address);
-      if (!result) {
-        await bot!.sendMessage(chatId, `The network is temporarily unable to return balance data for this address. This is usually a brief node sync issue. Please try again in a few minutes.`);
-        return;
-      }
-      await bot!.sendMessage(chatId,
-        `*ETH Wallet Balance*\n\n📬 Address:\n\`${address}\`\n\n💰 Balance: ${result.eth} ETH\n💵 Estimated Value: $${result.usdApprox} USD\n\n🔗 Full on-chain data:\nhttps://etherscan.io/address/${address}`,
-        { parse_mode: "Markdown" }
-      );
-    } else if (BTC_ADDRESS_REGEX.test(address)) {
-      const result = await getBtcBalance(address);
-      if (!result) {
-        await bot!.sendMessage(chatId, `The network is temporarily unable to return balance data for this address. Please try again in a few minutes.`);
-        return;
-      }
-      await bot!.sendMessage(chatId,
-        `*BTC Wallet Balance*\n\n📬 Address:\n\`${address}\`\n\n💰 Balance: ${result.btc} BTC\n💵 Estimated Value: $${result.usdApprox} USD\n\n🔗 Full on-chain data:\nhttps://www.blockchain.com/explorer/addresses/btc/${address}`,
-        { parse_mode: "Markdown" }
-      );
-    } else {
-      await bot!.sendMessage(chatId,
-        `That does not match a recognised address format.\n\n• Ethereum/EVM: starts with \`0x\`, 42 characters total\n• Bitcoin: starts with \`1\`, \`3\`, or \`bc1\`\n\nPlease double-check the address and try again.`,
-        { parse_mode: "Markdown" }
-      );
-    }
-  });
-
-  bot.on("message", async (msg) => {
-    const chatId = msg.chat.id;
-    const text = msg.text;
-    if (!text || text.startsWith("/")) return;
-
-    const typingInterval = setInterval(() => {
-      bot!.sendChatAction(chatId, "typing").catch(() => {});
-    }, 4000);
-
-    try {
-      await bot!.sendChatAction(chatId, "typing");
-
-      const completion = await openai.chat.completions.create({
-        model,
-        max_tokens: 4096,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: text,
-          },
-        ],
-      });
-
-      clearInterval(typingInterval);
-
-      const reply = completion.choices[0]?.message?.content;
-      if (!reply) {
-        await bot!.sendMessage(chatId,
-          "We are currently experiencing high ticket volume. Your case is in the queue and will be responded to shortly. Please try again in a moment."
-        );
-        return;
-      }
-
-      const chunkSize = 4000;
-      if (reply.length <= chunkSize) {
-        await bot!.sendMessage(chatId, reply);
-      } else {
-        let remaining = reply;
-        while (remaining.length > 0) {
-          let cutAt = chunkSize;
-          if (remaining.length > chunkSize) {
-            const lastNewline = remaining.lastIndexOf("\n", chunkSize);
-            if (lastNewline > chunkSize * 0.5) cutAt = lastNewline + 1;
-          }
-          await bot!.sendMessage(chatId, remaining.slice(0, cutAt));
-          remaining = remaining.slice(cutAt);
-          if (remaining.length > 0) {
-            await new Promise((r) => setTimeout(r, 700));
-            await bot!.sendChatAction(chatId, "typing");
-            await new Promise((r) => setTimeout(r, 900));
-          }
-        }
-      }
-
-      logger.info({ chatId, issueLength: text.length, model }, "Support response sent");
-    } catch (err) {
-      clearInterval(typingInterval);
-      logger.error({ err, chatId }, "Error generating support response");
-      await bot!.sendMessage(chatId,
-        "We encountered a temporary issue processing your request. Your case has been logged and our technical team has been alerted. Please resend your message and I will pick it up immediately."
-      );
-    }
-  });
-
-  bot.on("polling_error", (err) => {
-    logger.error({ err }, "Telegram polling error");
-  });
+export function processWebhookUpdate(update: TelegramBot.Update): void {
+  if (!bot) {
+    logger.warn("Bot not initialised — ignoring webhook update");
+    return;
+  }
+  if (update.message) {
+    handleMessage(update.message).catch((err) => {
+      logger.error({ err }, "Unhandled error in handleMessage");
+    });
+  }
 }
 
 export function stopBot(): void {
   if (bot) {
-    bot.stopPolling();
     bot = null;
     logger.info("Telegram bot stopped");
   }
