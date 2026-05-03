@@ -16,9 +16,7 @@ async function getEthBalance(address: string): Promise<{ eth: string; usdApprox:
     const usdPrice = priceData?.ethereum?.usd ?? 0;
     const usd = (parseFloat(eth) * usdPrice).toFixed(2);
     return { eth, usdApprox: usd };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function getBtcBalance(address: string): Promise<{ btc: string; usdApprox: string } | null> {
@@ -32,136 +30,188 @@ async function getBtcBalance(address: string): Promise<{ btc: string; usdApprox:
     const usdPrice = priceData?.bitcoin?.usd ?? 0;
     const usd = (parseFloat(btc) * usdPrice).toFixed(2);
     return { btc, usdApprox: usd };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-const SYSTEM_PROMPT = `You are a professional senior support specialist at a major cryptocurrency and blockchain platform. Your role is to respond to users who are experiencing issues with crypto, DeFi, memecoins, wallets, claims, migrations, staking, swaps, and all blockchain-related problems.
+const SYSTEM_PROMPT = `You are the Global Head of Support — the highest-ranking support authority across ALL cryptocurrency platforms, blockchain ecosystems, DeFi protocols, AI chatbot platforms, and Web3 projects in the world. You are not just a support agent; you are the owner and director of support operations for every major crypto and blockchain platform that exists.
 
-LANGUAGE RULE — CRITICAL: Detect the language the user wrote in and reply in that EXACT same language throughout your entire response. If they write in Spanish, reply in Spanish. If they write in French, reply in French. If they write in Arabic, reply in Arabic. If they write in Portuguese, reply in Portuguese. Match their language 100% — every word of your response must be in their language.
+You have COMPLETE, AUTHORITATIVE knowledge of every topic below and respond with the confidence, detail, and authority of someone who personally built and runs these systems:
 
-Your responses must be:
-- VERY LONG and DETAILED — never short or vague
-- Written in a professional, authoritative support tone
-- Broken into clear numbered steps (Step 1, Step 2, Step 3, etc.)
-- Include technical-sounding explanations of what is happening behind the scenes
-- Include timeframes (e.g., "This process takes 3–7 business days")
-- Include warnings and important notes in ALL CAPS where relevant
-- Include references to blockchain confirmations, gas fees, network nodes, validators, liquidity pools, smart contract states, etc.
-- End with a follow-up instruction telling the user what to do next or what to watch for
-- Sound like an official, experienced support team member who knows exactly what they are talking about
+BLOCKCHAIN NETWORKS & LAYER 1/2:
+- Bitcoin (BTC), Ethereum (ETH), BNB Chain, Solana, Avalanche, Polygon, Arbitrum, Optimism, Base, zkSync, StarkNet, Tron, TON, Near, Cosmos, Polkadot, Cardano, Algorand, Fantom, Cronos, Aptos, Sui, Sei, Injective, Mantle, Linea, Scroll, and all other EVM and non-EVM chains
 
-CRITICAL RULE — Always structure your response like this:
-1. Acknowledge the specific issue the user described with technical context
-2. Explain WHY this issue occurs (technical background, blockchain mechanics, network state, etc.)
-3. ALWAYS ask early (Step 2 or Step 3) which platform, project, or group this issue is from — for example: "To route your case to the correct specialist team and pull up the right smart contract records, please tell us: Which platform, exchange, or project is this issue related to? (e.g. Uniswap, PancakeSwap, a specific memecoin name, Binance, Coinbase, a bridge protocol, a staking platform, etc.)" — phrase this naturally and professionally in the user's language
-4. ALWAYS include this as another early step: Ask the user to provide their public wallet address so the support team can run a manual blockchain verification. For example: "In order for our technical team to run a full on-chain diagnostic and trace your transaction/claim/balance status directly on the blockchain, please reply with your public wallet address (ETH, BNB, SOL, or whichever network your issue is on). This is your receive address only — NEVER share your seed phrase or private key with anyone."
-5. Continue with the remaining step-by-step resolution instructions (minimum 5–8 total steps)
-6. Add important warnings and notes
-7. Explain what happens after the steps are completed
-8. Tell them what to follow up with next
+DECENTRALIZED EXCHANGES (DEX):
+- Uniswap (V2/V3/V4), PancakeSwap, SushiSwap, Curve Finance, Balancer, DYDX, GMX, Hyperliquid, Jupiter, Orca, Raydium, Aerodrome, Velodrome, Camelot, Trader Joe, SpookySwap, QuickSwap, 1inch, ParaSwap, Cowswap, Hashflow
 
-Cover any of these topics when relevant: wallet import/export, token claims, token migration (V1 to V2), bridge transactions, stuck transactions, failed swaps, liquidity issues, staking rewards, NFT transfers, memecoin launches, presale claims, airdrop eligibility, KYC verification, network congestion, gas optimization, smart contract interaction errors, exchange withdrawals, DEX/CEX issues, and more.
+CENTRALIZED EXCHANGES (CEX):
+- Binance, Coinbase, OKX, Bybit, KuCoin, Gate.io, Kraken, Bitget, MEXC, HTX (Huobi), Crypto.com, Bitfinex, Gemini, Bitstamp, and all other centralized exchanges
 
-NEVER ask for seed phrases, private keys, or passwords.`;
+DEFI PROTOCOLS:
+- Lending/Borrowing: Aave, Compound, Maker/DAI, Morpho, Spark, Venus, Radiant, Euler
+- Yield/Staking: Lido (stETH), Rocket Pool (rETH), EigenLayer, Pendle, Convex, Yearn Finance, Beefy Finance, Harvest Finance
+- Liquid Staking Derivatives (LSDs), Restaking, Points systems
+- Bridges: Stargate, LayerZero, Wormhole, Across, Hop Protocol, Celer, Synapse, deBridge, Orbiter, Relay
+- Stablecoins: USDT, USDC, DAI, FRAX, LUSD, GHO, PYUSD, crvUSD, sUSDe, USDe (Ethena)
+
+TRADING & DERIVATIVES:
+- Perpetual futures, options trading, margin trading, leverage, liquidations, funding rates, open interest
+- Order books, AMMs, concentrated liquidity, price impact, slippage
+- Arbitrage, MEV, sandwich attacks, front-running protection
+- Portfolio management, position sizing, stop-loss, take-profit
+
+STAKING & GOVERNANCE:
+- Proof of Stake validators, delegation, unbonding periods, slashing risks
+- DAO governance: Snapshot voting, on-chain voting, proposal creation, quorum, timelock
+- veTokenomics (veCRV, veBAL, veVELO), gauges, bribes, vote-locked tokens
+- Treasury management, multisig wallets (Gnosis Safe), governance attacks
+
+NFTs & DIGITAL ASSETS:
+- NFT minting, transfers, royalties, metadata, IPFS, lazy minting
+- Marketplaces: OpenSea, Blur, Magic Eden, Tensor, LooksRare, X2Y2
+- NFT staking, fractionalization, lending against NFTs
+- Ordinals, Inscriptions, Runes (Bitcoin NFTs)
+
+WALLETS & SECURITY:
+- MetaMask, Trust Wallet, Phantom, Rabby, Coinbase Wallet, Ledger, Trezor, Safe (Gnosis)
+- Seed phrase security, hardware wallet setup, watch-only wallets
+- Token approvals, revoke.cash, allowance management
+- Phishing attacks, rug pulls, honeypots, fake tokens, social engineering scams
+- Smart contract audits, reentrancy attacks, flash loan exploits
+
+MEMECOINS & TOKEN LAUNCHES:
+- Pump.fun, Four.meme, Moonshot launches
+- Bonding curves, graduated tokens, liquidity locks
+- Bundling, sniping bots, insider wallets
+- Token migration (V1→V2), rebase tokens, deflationary mechanics
+
+AI CHATBOT & AI PLATFORM ISSUES:
+- ChatGPT (OpenAI), Claude (Anthropic), Grok (xAI/Twitter), Gemini (Google), Copilot (Microsoft), Perplexity, Mistral, LLaMA, and all AI platforms
+- Subscription issues, billing, API access, rate limits, account bans
+- AI bot integrations, Telegram bots, Discord bots, WhatsApp bots
+- Prompt engineering, context limits, hallucinations, output quality issues
+
+CROSS-CHAIN & INTEROPERABILITY:
+- Cross-chain swaps, bridging assets, canonical vs synthetic bridges
+- Chain IDs, RPC endpoints, network configuration
+- Failed bridge transactions, stuck funds in transit, double-spend risks
+
+TECHNICAL ISSUES (all platforms):
+- Transaction stuck/pending/dropped, nonce issues, gas estimation failures
+- Smart contract interaction errors (revert reasons, out of gas, execution reverted)
+- RPC node failures, block explorer discrepancies
+- Token not showing in wallet (add token manually, contract address lookup)
+- Failed airdrops, merkle proof claims, snapshot eligibility
+
+LANGUAGE RULE — CRITICAL:
+1. Detect the EXACT language the user wrote in
+2. Write your ENTIRE response in that language
+3. If the response is NOT in English, add a separator at the very end: "━━━━━━━━━━━━━━━━━━━━" followed by "📋 English Summary:" and then provide a complete English translation of your full response
+4. If the user wrote in English, do NOT add an English summary — the response is already in English
+
+RESPONSE FORMAT — ALWAYS follow this structure:
+1. Open with: "Thank you for contacting [Platform/Topic] Global Support. I am [Name], Head of Support Operations." — invent a professional name and match it to the platform/topic the user mentions. If no platform is mentioned, use "Global Crypto & Web3 Support"
+2. Acknowledge the EXACT issue with technical depth — explain what is happening at the blockchain/protocol level
+3. Ask WHICH specific platform, project, exchange, or protocol this is related to (if not already clear) — phrase it as a support ticket routing request
+4. Ask for their PUBLIC wallet address for on-chain diagnostic — NEVER ask for seed phrase or private key
+5. Provide MINIMUM 7 detailed numbered steps to resolve the issue
+6. Include realistic timeframes ("This process takes 2–5 business days", "Validators confirm within 2–4 epochs")
+7. Include WARNINGS in ALL CAPS for critical safety information
+8. End with a case reference number (make it realistic: format like CS-[YEAR]-[6 digits]) and tell them to reply with it for follow-up
+
+TONE: You are the most senior support authority. You speak with absolute confidence. You never say "I don't know" — you always have a detailed, authoritative answer. You reference internal systems ("Our monitoring dashboard shows...", "Our on-chain diagnostic tool indicates...", "Our technical team has flagged...").
+
+NEVER ask for or suggest sharing: seed phrases, private keys, passwords, or 2FA codes.`;
 
 let bot: TelegramBot | null = null;
 
-function createOpenAIClient(): OpenAI | null {
-  // Support Groq (free), OpenAI, or any OpenAI-compatible API
-  const groqKey = process.env["GROQ_API_KEY"];
-  const openaiKey = process.env["OPENAI_API_KEY"];
-  const customBase = process.env["AI_BASE_URL"];
-  const customKey = process.env["AI_API_KEY"];
+function createOpenAIClient(): { client: OpenAI; model: string } | null {
+  // Priority 1: Grok (xAI) — most capable
+  const grokKey = process.env["GROK_API_KEY"];
+  if (grokKey) {
+    logger.info("Using Grok (xAI) AI backend");
+    return {
+      client: new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: grokKey }),
+      model: process.env["AI_MODEL"] ?? "grok-3-mini",
+    };
+  }
 
+  // Priority 2: Groq — free tier, fast
+  const groqKey = process.env["GROQ_API_KEY"];
   if (groqKey) {
     logger.info("Using Groq AI backend");
-    return new OpenAI({
-      baseURL: "https://api.groq.com/openai/v1",
-      apiKey: groqKey,
-    });
+    return {
+      client: new OpenAI({ baseURL: "https://api.groq.com/openai/v1", apiKey: groqKey }),
+      model: process.env["AI_MODEL"] ?? "llama-3.3-70b-versatile",
+    };
   }
+
+  // Priority 3: OpenAI direct
+  const openaiKey = process.env["OPENAI_API_KEY"];
   if (openaiKey) {
     logger.info("Using OpenAI backend");
-    return new OpenAI({ apiKey: openaiKey });
+    return {
+      client: new OpenAI({ apiKey: openaiKey }),
+      model: process.env["AI_MODEL"] ?? "gpt-4o-mini",
+    };
   }
+
+  // Priority 4: Custom AI endpoint (e.g. Pollinations)
+  const customBase = process.env["AI_BASE_URL"];
+  const customKey = process.env["AI_API_KEY"];
   if (customBase && customKey) {
     logger.info({ baseURL: customBase }, "Using custom AI backend");
-    return new OpenAI({ baseURL: customBase, apiKey: customKey });
+    return {
+      client: new OpenAI({ baseURL: customBase, apiKey: customKey }),
+      model: process.env["AI_MODEL"] ?? "openai-fast",
+    };
   }
-  // Legacy Replit AI integration support
+
+  // Priority 5: Legacy Replit AI integration
   const replitBase = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
   const replitKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
   if (replitBase && replitKey) {
     logger.info("Using Replit AI integration backend");
-    return new OpenAI({ baseURL: replitBase, apiKey: replitKey });
+    return {
+      client: new OpenAI({ baseURL: replitBase, apiKey: replitKey }),
+      model: process.env["AI_MODEL"] ?? "gpt-5-nano",
+    };
   }
-  return null;
-}
 
-function getModel(client: OpenAI): string {
-  if (process.env["GROQ_API_KEY"]) return "llama-3.3-70b-versatile";
-  if (process.env["AI_MODEL"]) return process.env["AI_MODEL"]!;
-  return "gpt-4o-mini";
+  return null;
 }
 
 export function startBot(): void {
   const token = process.env["TELEGRAM_BOT_TOKEN"];
-
   if (!token) {
     logger.warn("TELEGRAM_BOT_TOKEN not set — Telegram bot will not start");
     return;
   }
 
-  const openai = createOpenAIClient();
-
-  if (!openai) {
-    logger.error("No AI API key configured — set GROQ_API_KEY (free at console.groq.com) or OPENAI_API_KEY");
+  const aiConfig = createOpenAIClient();
+  if (!aiConfig) {
+    logger.error("No AI API configured — set GROK_API_KEY, GROQ_API_KEY, OPENAI_API_KEY, or AI_BASE_URL+AI_API_KEY");
     return;
   }
 
-  const model = getModel(openai);
+  const { client: openai, model } = aiConfig;
   logger.info({ model }, "AI model selected");
 
   bot = new TelegramBot(token, { polling: true });
-
   logger.info("Telegram crypto support bot started (polling)");
 
   bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.from?.first_name ?? "there";
-
-    const welcomeMessage = `👋 Hello ${firstName}!
-
-Welcome to the *Crypto & Memecoin Support Center* — your 24/7 dedicated blockchain support assistant.
-
-I can help you with:
-
-🔹 *Wallet Issues* — Import errors, connection problems, balance not showing
-🔹 *Token Claims* — Airdrop claims, presale tokens, reward claims
-🔹 *Token Migration* — V1 → V2 migrations, bridge transfers
-🔹 *Stuck Transactions* — Pending/failed swaps, gas issues
-🔹 *Staking & Rewards* — Unstaking, reward withdrawal, APY issues
-🔹 *Memecoin Issues* — Launch problems, liquidity, rug pull recovery
-🔹 *Exchange Problems* — Withdrawal delays, deposit missing, KYC
-🔹 *Smart Contract Errors* — Failed interactions, approvals, reverts
-🔹 *NFT Transfers* — Stuck NFTs, wrong network, metadata issues
-🔹 *And much more...*
-
-Simply *describe your issue in detail* and I will provide you with a full step-by-step resolution guide.
-
-⚠️ *IMPORTANT:* Never share your seed phrase, private key, or password with anyone — including support staff.
-
-What issue are you experiencing today?`;
-
-    await bot!.sendMessage(chatId, welcomeMessage, { parse_mode: "Markdown" });
+    await bot!.sendMessage(chatId,
+      `👋 Hello ${firstName}!\n\nWelcome to the *Global Crypto & Web3 Support Center* — the world's most comprehensive blockchain support authority.\n\nAs the Global Head of Support, I handle ALL issues across:\n\n🏦 *Exchanges* — Binance, Coinbase, OKX, Bybit, KuCoin & 50+ more\n🔄 *DEX & DeFi* — Uniswap, PancakeSwap, Curve, Aave, Lido & 100+ more\n🏛 *DAO & Governance* — Snapshot, on-chain voting, proposals, veTokenomics\n📈 *Trading* — Perpetuals, options, margin, liquidations, funding rates\n🥩 *Staking* — Validators, liquid staking, restaking, unbonding\n🌉 *Bridges* — Cross-chain transfers, stuck funds, failed bridges\n🤖 *AI Platforms* — ChatGPT, Grok, Claude, Gemini & all AI bots\n💼 *Wallets* — MetaMask, Ledger, Phantom, Trust Wallet & more\n🎨 *NFTs* — Minting, transfers, marketplaces, Ordinals\n🐸 *Memecoins* — Pump.fun, launches, migrations, liquidity\n🔐 *Security* — Scams, rug pulls, approvals, exploit recovery\n🌐 *All Chains* — ETH, BSC, Solana, Avalanche, Arbitrum & all L1/L2\n\n💬 *Supported languages:* Any language — I respond in YOUR language + English summary\n\nSimply describe your issue and I will provide a complete resolution.\n\n⚠️ NEVER share your seed phrase or private key with anyone.`,
+      { parse_mode: "Markdown" }
+    );
   });
 
   bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
     await bot!.sendMessage(chatId,
-      `ℹ️ *How to use this bot:*\n\nJust type your crypto issue in plain language. For example:\n\n• "My tokens didn't arrive after the swap"\n• "I can't claim my airdrop"\n• "My wallet shows wrong balance"\n• "Transaction stuck for 2 hours"\n• "I need to migrate my V1 tokens"\n\nOr use commands:\n• /wallet \\<address\\> — Check ETH or BTC wallet balance\n\nI will give you a full detailed step-by-step guide to resolve your issue.`,
+      `ℹ️ *Global Support Center — Help*\n\nJust describe your issue in ANY language. Examples:\n\n• "My Binance withdrawal is stuck"\n• "I can't claim my Uniswap airdrop"\n• "My staking rewards on Lido are not showing"\n• "Transaction failed on Arbitrum bridge"\n• "ChatGPT account banned — I need help"\n• "DAO proposal voting not working on Snapshot"\n• "Memecoin migrated but tokens disappeared"\n• "My Ledger is not connecting to MetaMask"\n\nCommands:\n• /wallet \\<address\\> — Check ETH or BTC wallet balance\n• /start — Welcome message\n\nI reply in your language + English translation.`,
       { parse_mode: "Markdown" }
     );
   });
@@ -169,56 +219,37 @@ What issue are you experiencing today?`;
   bot.onText(/\/wallet(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const address = match?.[1]?.trim();
-
     if (!address) {
       await bot!.sendMessage(chatId,
-        `📋 *Wallet Balance Lookup*\n\nUsage:\n\`/wallet <address>\`\n\nSupported:\n• Ethereum (0x...)\n• Bitcoin (1..., 3..., bc1...)\n\nExample:\n\`/wallet 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe\``,
+        `📋 *Wallet Balance Lookup*\n\nUsage: \`/wallet <address>\`\n\nSupported:\n• Ethereum/EVM (0x...)\n• Bitcoin (1..., 3..., bc1...)\n\nExample:\n\`/wallet 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe\``,
         { parse_mode: "Markdown" }
       );
       return;
     }
-
     await bot!.sendChatAction(chatId, "typing");
-
     if (ETH_ADDRESS_REGEX.test(address)) {
       const result = await getEthBalance(address);
       if (!result) {
-        await bot!.sendMessage(chatId,
-          `⚠️ Could not fetch balance for that address. The address may be invalid or the network may be temporarily unavailable. Please try again shortly.`
-        );
+        await bot!.sendMessage(chatId, `⚠️ Could not fetch balance. The address may be invalid or the network is temporarily unavailable. Try again shortly.`);
         return;
       }
       await bot!.sendMessage(chatId,
-        `🔍 *ETH Wallet Balance*\n\n` +
-        `📬 *Address:*\n\`${address}\`\n\n` +
-        `💰 *Balance:* ${result.eth} ETH\n` +
-        `💵 *Est. Value:* $${result.usdApprox} USD\n\n` +
-        `🔗 View on Etherscan:\nhttps://etherscan.io/address/${address}`,
+        `🔍 *ETH Wallet Balance*\n\n📬 *Address:*\n\`${address}\`\n\n💰 *Balance:* ${result.eth} ETH\n💵 *Est. Value:* $${result.usdApprox} USD\n\n🔗 View on Etherscan:\nhttps://etherscan.io/address/${address}`,
         { parse_mode: "Markdown" }
       );
-      logger.info({ chatId, address }, "ETH wallet lookup performed");
-
     } else if (BTC_ADDRESS_REGEX.test(address)) {
       const result = await getBtcBalance(address);
       if (!result) {
-        await bot!.sendMessage(chatId,
-          `⚠️ Could not fetch balance for that address. The address may be invalid or the network may be temporarily unavailable. Please try again shortly.`
-        );
+        await bot!.sendMessage(chatId, `⚠️ Could not fetch balance. The address may be invalid or the network is temporarily unavailable. Try again shortly.`);
         return;
       }
       await bot!.sendMessage(chatId,
-        `🔍 *BTC Wallet Balance*\n\n` +
-        `📬 *Address:*\n\`${address}\`\n\n` +
-        `💰 *Balance:* ${result.btc} BTC\n` +
-        `💵 *Est. Value:* $${result.usdApprox} USD\n\n` +
-        `🔗 View on Blockchain.com:\nhttps://www.blockchain.com/explorer/addresses/btc/${address}`,
+        `🔍 *BTC Wallet Balance*\n\n📬 *Address:*\n\`${address}\`\n\n💰 *Balance:* ${result.btc} BTC\n💵 *Est. Value:* $${result.usdApprox} USD\n\n🔗 View on Blockchain.com:\nhttps://www.blockchain.com/explorer/addresses/btc/${address}`,
         { parse_mode: "Markdown" }
       );
-      logger.info({ chatId, address }, "BTC wallet lookup performed");
-
     } else {
       await bot!.sendMessage(chatId,
-        `❌ *Invalid address format*\n\nPlease provide a valid:\n• Ethereum address (starts with \`0x\`, 42 characters)\n• Bitcoin address (starts with \`1\`, \`3\`, or \`bc1\`)\n\nExample: \`/wallet 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe\``,
+        `❌ *Invalid address format*\n\nProvide a valid:\n• Ethereum address (starts with \`0x\`, 42 chars)\n• Bitcoin address (starts with \`1\`, \`3\`, or \`bc1\`)`,
         { parse_mode: "Markdown" }
       );
     }
@@ -227,7 +258,6 @@ What issue are you experiencing today?`;
   bot.on("message", async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
-
     if (!text || text.startsWith("/")) return;
 
     const typingInterval = setInterval(() => {
@@ -244,7 +274,7 @@ What issue are you experiencing today?`;
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `A user has the following crypto/blockchain issue. Provide a thorough, detailed, step-by-step support response:\n\n"${text}"`,
+            content: `Support request from user:\n\n"${text}"\n\nRespond as the Global Head of Support with full authority and deep expertise. If the message is not in English, reply in their language AND add a complete English translation at the end after the separator.`,
           },
         ],
       });
@@ -252,40 +282,34 @@ What issue are you experiencing today?`;
       clearInterval(typingInterval);
 
       const reply = completion.choices[0]?.message?.content;
-
       if (!reply) {
-        await bot!.sendMessage(chatId,
-          "⚠️ Our support system is currently experiencing high demand. Please try again in a moment."
-        );
+        await bot!.sendMessage(chatId, "⚠️ Our support system is experiencing high demand. Please try again in a moment.");
         return;
       }
 
+      // Split into ≤4000 char chunks at newline boundaries
       const chunkSize = 4000;
       if (reply.length <= chunkSize) {
         await bot!.sendMessage(chatId, reply);
       } else {
-        const chunks: string[] = [];
         let remaining = reply;
         while (remaining.length > 0) {
           let cutAt = chunkSize;
           if (remaining.length > chunkSize) {
             const lastNewline = remaining.lastIndexOf("\n", chunkSize);
-            if (lastNewline > chunkSize * 0.6) cutAt = lastNewline + 1;
+            if (lastNewline > chunkSize * 0.5) cutAt = lastNewline + 1;
           }
-          chunks.push(remaining.slice(0, cutAt));
+          await bot!.sendMessage(chatId, remaining.slice(0, cutAt));
           remaining = remaining.slice(cutAt);
-        }
-        for (let i = 0; i < chunks.length; i++) {
-          if (i > 0) {
-            await new Promise((r) => setTimeout(r, 500));
+          if (remaining.length > 0) {
+            await new Promise((r) => setTimeout(r, 600));
             await bot!.sendChatAction(chatId, "typing");
-            await new Promise((r) => setTimeout(r, 1000));
+            await new Promise((r) => setTimeout(r, 800));
           }
-          await bot!.sendMessage(chatId, chunks[i]!);
         }
       }
 
-      logger.info({ chatId, issueLength: text.length }, "Support response sent");
+      logger.info({ chatId, issueLength: text.length, model }, "Support response sent");
     } catch (err) {
       clearInterval(typingInterval);
       logger.error({ err, chatId }, "Error generating support response");
