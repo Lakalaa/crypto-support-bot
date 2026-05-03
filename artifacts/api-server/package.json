@@ -10,22 +10,21 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@workspace/api-zod": "workspace:*",
-    "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
-    "drizzle-orm": "catalog:",
+    "drizzle-orm": "^0.44.0",
     "express": "^5",
     "node-telegram-bot-api": "^0.67.0",
     "openai": "^6.33.0",
     "pino": "^9",
-    "pino-http": "^10"
+    "pino-http": "^10",
+    "zod": "^3.25.17"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "catalog:",
+    "@types/node": "^22.15.3",
     "@types/node-telegram-bot-api": "^0.64.14",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
